@@ -4,31 +4,75 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>I203 Schedule Timer</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
-body{margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(180deg,#050b1a,#000);color:#e8f0ff}
-.container{max-width:900px;margin:auto;padding:20px}
-.title{text-align:center;font-size:36px;font-weight:bold;color:#4da3ff}
-.subtitle{text-align:center;font-size:18px;color:#9fc7ff;margin-bottom:20px}
-.class-card{background:rgba(20,60,120,.25);border-radius:16px;padding:15px;margin-bottom:15px;box-shadow:0 0 15px rgba(77,163,255,.15)}
-.class-card.current{border:2px solid #4da3ff}
-.class-card.completed{opacity:.5}
-.subject{font-size:22px;font-weight:bold;color:#fff}
-.details{font-size:15px;color:#b8d6ff;margin:6px 0}
-.timer{font-size:18px;font-weight:bold;color:#4da3ff;margin:8px 0}
-textarea{width:100%;min-height:60px;border-radius:10px;border:none;padding:10px;box-sizing:border-box;background:#050b1a;color:#e8f0ff}
-label{font-size:14px;color:#9fc7ff}
-@media(max-width:700px){.title{font-size:28px}.subtitle{font-size:16px}.subject{font-size:20px}.timer{font-size:16px}}
+:root{--bg:#0b1220;--fg:#e8f0ff;--card:#121a2f;--accent:#4da3ff;--muted:#9fb6ff}
+body.light{--bg:#f5f7fb;--fg:#111;--card:#ffffff;--accent:#2563eb;--muted:#64748b}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Arial,Helvetica,sans-serif;background:var(--bg);color:var(--fg)}
+.container{max-width:1100px;margin:auto;padding:18px}
+.header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.title{font-size:28px;font-weight:700;color:var(--accent)}
+.subtitle{font-size:14px;color:var(--muted)}
+.nav{display:flex;gap:8px;flex-wrap:wrap}
+button{border:none;border-radius:10px;padding:10px 14px;cursor:pointer;background:linear-gradient(135deg,var(--accent),#6fb4ff);color:#fff;font-weight:600}
+button.ghost{background:transparent;color:var(--fg);border:1px solid rgba(255,255,255,.1)}
+.card{background:linear-gradient(180deg,var(--card),rgba(255,255,255,.02));border-radius:18px;padding:14px;margin-bottom:14px;box-shadow:0 10px 25px rgba(0,0,0,.25)}
+.card.current{border:2px solid var(--accent)}
+.card.completed{opacity:.55}
+.subject{font-size:20px;font-weight:700;display:flex;align-items:center;gap:8px}
+.details{font-size:14px;color:var(--muted);margin:3px 0}
+.timer{font-size:16px;font-weight:700;color:var(--accent);margin-top:6px}
+.week-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+input,select,textarea{width:100%;border-radius:12px;border:none;padding:10px;margin:6px 0;background:#0f172a;color:#fff}
+body.light input,body.light textarea,body.light select{background:#e5e7eb;color:#000}
+.task.completed{text-decoration:line-through;opacity:.6}
+.color-dot{display:inline-block;width:12px;height:12px;border-radius:50%}
+.section{margin-top:18px}
+.section h3{margin:6px 0 10px 0}
+.task-row{display:flex;gap:6px;flex-wrap:wrap}
+.task-row button{padding:6px 10px;border-radius:8px}
+@media(max-width:700px){.title{font-size:24px}.subject{font-size:18px}}
 </style>
 </head>
 <body>
 <div class="container">
-  <div class="title">I203 Today Schedule</div>
-  <div class="subtitle" id="today"></div>
+  <div class="header">
+    <div>
+      <div class="title"><i class="fa-solid fa-calendar-check"></i> I203 Schedule Timer</div>
+      <div class="subtitle" id="today"></div>
+    </div>
+    <div class="nav">
+      <button class="ghost" onclick="prevDay()"><i class="fa-solid fa-chevron-left"></i></button>
+      <button class="ghost" onclick="toggleView()" id="viewBtn"><i class="fa-solid fa-table"></i> Weekly</button>
+      <button class="ghost" onclick="toggleMode()"><i class="fa-solid fa-moon"></i></button>
+      <button class="ghost" onclick="nextDay()"><i class="fa-solid fa-chevron-right"></i></button>
+    </div>
+  </div>
+
+  <div id="upcoming"></div>
   <div id="schedule"></div>
+
+  <div class="section">
+    <h3><i class="fa-solid fa-list-check"></i> Tasks / Assignments</h3>
+    <input id="taskText" placeholder="Task description">
+    <select id="taskSubject"></select>
+    <input type="date" id="taskDate">
+    <input id="taskNotes" placeholder="Notes">
+    <button onclick="addTask()"><i class="fa-solid fa-plus"></i> Add Task</button>
+
+    <div class="task-row">
+      <input id="search" placeholder="Search tasks" oninput="renderTasks()">
+      <select id="filterSubject" onchange="renderTasks()"></select>
+    </div>
+
+    <div id="tasks"></div>
+  </div>
 </div>
+
 <script>
 const scheduleData={
-  Monday:[
+ Monday:[
     {subject:'7WEB2',start:'10:00',end:'13:00',room:'CLAB1',prof:'Rivera, Russel'},
     {subject:'7NET1',start:'14:00',end:'17:00',room:'CLAB5',prof:'Superio, Mark Gil Q.'}
   ],
@@ -51,99 +95,138 @@ const scheduleData={
   ]
 };
 
-const todayName=new Date().toLocaleDateString('en-US',{weekday:'long'});
-document.getElementById('today').textContent=todayName;
-const scheduleEl=document.getElementById('schedule');
+let currentDate=new Date();
+let weekly=false;
+let tasks=JSON.parse(localStorage.getItem('tasks')||'[]');
+let colors=JSON.parse(localStorage.getItem('colors')||'{}');
 
-function parseTime(t){const [h,m]=t.split(':').map(Number);const d=new Date();d.setHours(h,m,0,0);return d}
+function saveAll(){localStorage.setItem('tasks',JSON.stringify(tasks));localStorage.setItem('colors',JSON.stringify(colors));}
 
+function format12(t){let[h,m]=t.split(':');h=Number(h);const ampm=h>=12?'PM':'AM';h=h%12||12;return h+':'+m+' '+ampm}
+function parseTime(t,d){const [h,m]=t.split(':');const x=new Date(d);x.setHours(h,m,0,0);return x}
 function format(ms){const s=Math.max(0,Math.floor(ms/1000));const h=Math.floor(s/3600);const m=Math.floor((s%3600)/60);const sec=s%60;return (h>0?h+':':'')+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
 
-function loadNotes(key){return localStorage.getItem(key)||''}
-function saveNotes(key,val){localStorage.setItem(key,val)}
+function renderSchedule(){
+  const dayName = currentDate.toLocaleDateString('en-US',{weekday:'long'});
+  document.getElementById('today').textContent = currentDate.toDateString();
+  const el = document.getElementById('schedule');
+  el.innerHTML = '';
+  const now = new Date();
+  const classes = scheduleData[dayName] || [];
 
-function render(){
-  scheduleEl.innerHTML='';
-  const now=new Date();
-  const todayClasses=scheduleData[todayName]||[];
-
-  // EMPTY STATE + WEEKLY MINI VIEW
-  if (todayClasses.length === 0) {
-    let weeklyHTML = `
-      <div class="class-card">
-        <div class="subject">No classes today</div>
-        <div class="details">Enjoy your rest day.</div>
-      </div>
-
-      <div class="class-card">
-        <div class="subject">Weekly Overview</div>
-    `;
-
-    Object.keys(scheduleData).forEach(day => {
-      weeklyHTML += `<div class="details"><strong>${day}</strong></div>`;
-      scheduleData[day].forEach(c => {
-        weeklyHTML += `<div class="details">${c.subject} • ${c.start} - ${c.end} • ${c.room}</div>`;
+  if(weekly){
+    const grid = document.createElement('div'); grid.className='week-grid';
+    Object.keys(scheduleData).forEach(day=>{
+      const col = document.createElement('div'); col.className='card';
+      col.innerHTML = `<div class='subject'><i class='fa-solid fa-calendar-day'></i> ${day}</div>`;
+      (scheduleData[day]||[]).forEach(c=>{
+        const color = colors[c.subject]||'#4da3ff';
+        col.innerHTML += `<div class='details'><span class='color-dot' style='background:${color}'></span> ${c.subject} • ${format12(c.start)} - ${format12(c.end)}</div>`;
       });
+      grid.appendChild(col);
     });
-
-    weeklyHTML += `</div>`;
-    scheduleEl.innerHTML = weeklyHTML;
+    el.appendChild(grid);
+    renderUpcoming();
     return;
   }
 
-  // NORMAL DAILY VIEW
-  todayClasses.forEach((cls,i)=>{
-    const start=parseTime(cls.start);
-    const end=parseTime(cls.end);
+  let nextClass = null;
+  classes.forEach(c=>{
+    const start = parseTime(c.start,currentDate);
+    const end = parseTime(c.end,currentDate);
+    if(!nextClass && now < start) nextClass = {...c,start};
 
-    const card=document.createElement('div');
-    card.className='class-card';
-
-    const timerDiv=document.createElement('div');
-    timerDiv.className='timer';
-
+    const card = document.createElement('div'); card.className='card';
     let status='';
-    if(now<start){
-      status='Starts in '+format(start-now);
-    }
-    else if(now>=start && now<end){
-      status='Ends in '+format(end-now);
-      card.classList.add('current');
-    }
-    else{
-      status='Completed';
-      card.classList.add('completed');
-    }
+    if(now < start) status = 'Starts in ' + format(start - now);
+    else if(now >= start && now < end){status='Ends in ' + format(end - now); card.classList.add('current');}
+    else{status='Completed'; card.classList.add('completed');}
 
-    timerDiv.textContent=status;
-
-    const notesKey=todayName+'-'+cls.subject;
-    const notesVal=loadNotes(notesKey);
-
-    card.innerHTML=`
-      <div class="subject">${cls.subject}</div>
-      <div class="details">${cls.start} - ${cls.end}</div>
-      <div class="details">Room: ${cls.room}</div>
-      <div class="details">Professor: ${cls.prof}</div>
+    const color = colors[c.subject]||'#4da3ff';
+    card.innerHTML = `
+      <div class='subject'><span class='color-dot' style='background:${color}'></span>${c.subject}</div>
+      <div class='details'><i class='fa-regular fa-clock'></i> ${format12(c.start)} - ${format12(c.end)}</div>
+      <div class='details'><i class='fa-solid fa-location-dot'></i> ${c.room}</div>
+      <div class='details'><i class='fa-solid fa-user'></i> ${c.prof}</div>
+      <div class='timer'><i class='fa-solid fa-hourglass-half'></i> ${status}</div>
     `;
-
-    card.appendChild(timerDiv);
-
-    const label=document.createElement('label');
-    label.textContent='Tasks / Assignments:';
-
-    const ta=document.createElement('textarea');
-    ta.value=notesVal;
-    ta.oninput=()=>saveNotes(notesKey,ta.value);
-
-    card.appendChild(label);
-    card.appendChild(ta);
-    scheduleEl.appendChild(card);
+    el.appendChild(card);
   });
+
+  renderUpcoming(nextClass);
 }
 
-render();
-setInterval(render,1000);
+function renderUpcoming(nextClass){
+  const up = document.getElementById('upcoming');
+  const now = new Date();
+  const dayName = currentDate.toLocaleDateString('en-US',{weekday:'long'});
+  const classes = scheduleData[dayName] || [];
+  let first = null, second = null;
+
+  classes.forEach(c=>{
+    const s = parseTime(c.start,currentDate);
+    if(now < s){
+      if(!first) first = {...c,start:s};
+      else if(!second) second = {...c,start:s};
+    }
+  });
+
+  let html='';
+  if(first) html+=`<div class='card'><i class='fa-solid fa-forward'></i> <b>Upcoming:</b> ${first.subject} in ${format(first.start-now)}</div>`;
+  if(second) html+=`<div class='card'><i class='fa-solid fa-angles-right'></i> <b>Next:</b> ${second.subject} at ${format12(second.start.getHours()+':'+String(second.start.getMinutes()).padStart(2,'0'))}</div>`;
+  up.innerHTML = html;
+}
+
+function renderTasks(){
+ const box=document.getElementById('tasks');box.innerHTML='';
+ const q=document.getElementById('search').value.toLowerCase();
+ const fs=document.getElementById('filterSubject').value;
+
+ tasks.filter(t=>(!fs||t.subject===fs)&&(!q||t.text.toLowerCase().includes(q)))
+ .forEach((t,i)=>{
+  const d=document.createElement('div');d.className='card task'+(t.done?' completed':'');
+  d.innerHTML=`<div><b>${t.text}</b> (${t.subject}) - ${t.date}</div>
+  <div>${t.notes||''}</div>
+  <div class='task-row'>
+    <button onclick='toggleTask(${i})'><i class='fa-solid fa-check'></i></button>
+    <button onclick='editTask(${i})'><i class='fa-solid fa-pen'></i></button>
+    <button onclick='delTask(${i})'><i class='fa-solid fa-trash'></i></button>
+  </div>`;
+  box.appendChild(d);
+ });
+}
+
+function addTask(){
+ const text=taskText.value;const subject=taskSubject.value;const date=taskDate.value;const notes=taskNotes.value;
+ if(!text||!subject||!date) return;
+ tasks.push({text,subject,date,notes,done:false});
+ saveAll();renderTasks();taskText.value='';taskNotes.value='';
+}
+function toggleTask(i){tasks[i].done=!tasks[i].done;saveAll();renderTasks()}
+function delTask(i){tasks.splice(i,1);saveAll();renderTasks()}
+function editTask(i){const t=tasks[i];const nt=prompt('Edit task',t.text);if(nt){t.text=nt;saveAll();renderTasks()}}
+
+function toggleMode(){document.body.classList.toggle('light');}
+function toggleView(){weekly=!weekly;document.getElementById('viewBtn').innerHTML=weekly?'<i class="fa-solid fa-list"></i> Daily':'<i class="fa-solid fa-table"></i> Weekly';renderSchedule();}
+function prevDay(){currentDate.setDate(currentDate.getDate()-1);renderSchedule()}
+function nextDay(){currentDate.setDate(currentDate.getDate()+1);renderSchedule()}
+
+function initSubjects(){
+ const subs=[...new Set(Object.values(scheduleData).flat().map(c=>c.subject))];
+ const s=document.getElementById('taskSubject');const f=document.getElementById('filterSubject');
+ s.innerHTML='';f.innerHTML='<option value="">All</option>';
+ subs.forEach(x=>{
+  s.innerHTML+=`<option>${x}</option>`;
+  f.innerHTML+=`<option>${x}</option>`;
+  if(!colors[x]) colors[x]='#'+Math.floor(Math.random()*16777215).toString(16);
+ });
+ saveAll();
+}
+
+initSubjects();
+renderSchedule();
+renderTasks();
+setInterval(()=>{renderSchedule();renderUpcoming();},1000);
 </script>
 </body>
 </html>
