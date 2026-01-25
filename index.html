@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>I203 Schedule Timer</title>
+<style>
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(180deg,#050b1a,#000);color:#e8f0ff}
+.container{max-width:900px;margin:auto;padding:20px}
+.title{text-align:center;font-size:36px;font-weight:bold;color:#4da3ff}
+.subtitle{text-align:center;font-size:18px;color:#9fc7ff;margin-bottom:20px}
+.class-card{background:rgba(20,60,120,.25);border-radius:16px;padding:15px;margin-bottom:15px;box-shadow:0 0 15px rgba(77,163,255,.15)}
+.class-card.current{border:2px solid #4da3ff}
+.class-card.completed{opacity:.5}
+.subject{font-size:22px;font-weight:bold;color:#fff}
+.details{font-size:15px;color:#b8d6ff;margin:6px 0}
+.timer{font-size:18px;font-weight:bold;color:#4da3ff;margin:8px 0}
+textarea{width:100%;min-height:60px;border-radius:10px;border:none;padding:10px;box-sizing:border-box;background:#050b1a;color:#e8f0ff}
+label{font-size:14px;color:#9fc7ff}
+@media(max-width:700px){.title{font-size:28px}.subtitle{font-size:16px}.subject{font-size:20px}.timer{font-size:16px}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title">I203 Today Schedule</div>
+  <div class="subtitle" id="today"></div>
+  <div id="schedule"></div>
+</div>
+<script>
+const scheduleData={
+  Monday:[
+    {subject:'7WEB2',start:'10:00',end:'13:00',room:'CLAB1',prof:'Rivera, Russel'},
+    {subject:'7NET1',start:'14:00',end:'17:00',room:'CLAB5',prof:'Superio, Mark Gil Q.'}
+  ],
+  Tuesday:[
+    {subject:'7NET1',start:'07:00',end:'09:00',room:'CLAB5',prof:'Superio, Mark Gil Q.'},
+    {subject:'7SADD',start:'09:00',end:'11:00',room:'L310',prof:'Ybañez, Michelle Ann J.'}
+  ],
+  Wednesday:[
+    {subject:'7WEB2',start:'07:00',end:'09:00',room:'L309',prof:'Rivera, Russel'},
+    {subject:'PATHFIT 4',start:'09:00',end:'11:00',room:'GYM',prof:'Fernando, Leanjo'}
+  ],
+  Thursday:[
+    {subject:'RIZAL',start:'10:00',end:'13:00',room:'L307',prof:'Badaran, Marilyn'},
+    {subject:'7BPO',start:'14:00',end:'17:00',room:'L303',prof:'Tiglao, Tammy'},
+    {subject:'7BAFUN',start:'17:00',end:'20:00',room:'L306',prof:'Sese, Vito Dominic'}
+  ],
+  Friday:[
+    {subject:'7SADD',start:'07:00',end:'10:00',room:'CLAB1',prof:'Ybañez, Michelle Ann J.'},
+    {subject:'ETHICS',start:'10:00',end:'13:00',room:'L306',prof:'Paguino, Mike Irish'}
+  ]
+};
+
+const todayName=new Date().toLocaleDateString('en-US',{weekday:'long'});
+document.getElementById('today').textContent=todayName;
+const scheduleEl=document.getElementById('schedule');
+
+function parseTime(t){const [h,m]=t.split(':').map(Number);const d=new Date();d.setHours(h,m,0,0);return d}
+
+function format(ms){const s=Math.max(0,Math.floor(ms/1000));const h=Math.floor(s/3600);const m=Math.floor((s%3600)/60);const sec=s%60;return (h>0?h+':':'')+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
+
+function loadNotes(key){return localStorage.getItem(key)||''}
+function saveNotes(key,val){localStorage.setItem(key,val)}
+
+function render(){
+  scheduleEl.innerHTML='';
+  const now=new Date();
+  const todayClasses=scheduleData[todayName]||[];
+
+  // EMPTY STATE + WEEKLY MINI VIEW
+  if (todayClasses.length === 0) {
+    let weeklyHTML = `
+      <div class="class-card">
+        <div class="subject">No classes today</div>
+        <div class="details">Enjoy your rest day.</div>
+      </div>
+
+      <div class="class-card">
+        <div class="subject">Weekly Overview</div>
+    `;
+
+    Object.keys(scheduleData).forEach(day => {
+      weeklyHTML += `<div class="details"><strong>${day}</strong></div>`;
+      scheduleData[day].forEach(c => {
+        weeklyHTML += `<div class="details">${c.subject} • ${c.start} - ${c.end} • ${c.room}</div>`;
+      });
+    });
+
+    weeklyHTML += `</div>`;
+    scheduleEl.innerHTML = weeklyHTML;
+    return;
+  }
+
+  // NORMAL DAILY VIEW
+  todayClasses.forEach((cls,i)=>{
+    const start=parseTime(cls.start);
+    const end=parseTime(cls.end);
+
+    const card=document.createElement('div');
+    card.className='class-card';
+
+    const timerDiv=document.createElement('div');
+    timerDiv.className='timer';
+
+    let status='';
+    if(now<start){
+      status='Starts in '+format(start-now);
+    }
+    else if(now>=start && now<end){
+      status='Ends in '+format(end-now);
+      card.classList.add('current');
+    }
+    else{
+      status='Completed';
+      card.classList.add('completed');
+    }
+
+    timerDiv.textContent=status;
+
+    const notesKey=todayName+'-'+cls.subject;
+    const notesVal=loadNotes(notesKey);
+
+    card.innerHTML=`
+      <div class="subject">${cls.subject}</div>
+      <div class="details">${cls.start} - ${cls.end}</div>
+      <div class="details">Room: ${cls.room}</div>
+      <div class="details">Professor: ${cls.prof}</div>
+    `;
+
+    card.appendChild(timerDiv);
+
+    const label=document.createElement('label');
+    label.textContent='Tasks / Assignments:';
+
+    const ta=document.createElement('textarea');
+    ta.value=notesVal;
+    ta.oninput=()=>saveNotes(notesKey,ta.value);
+
+    card.appendChild(label);
+    card.appendChild(ta);
+    scheduleEl.appendChild(card);
+  });
+}
+
+render();
+setInterval(render,1000);
+</script>
+</body>
+</html>
