@@ -72,12 +72,11 @@ body.light input,body.light textarea,body.light select{background:#e5e7eb;color:
 
 <script>
 const scheduleData={
- Monday:[
-    {subject:'7WEB2',start:'10:00',end:'13:00',room:'CLAB1',prof:'Rivera, Russel'},
-    {subject:'7NET1',start:'14:00',end:'17:00',room:'CLAB5',prof:'Superio, Mark Gil Q.'}
+  Monday:[
+    {subject:'7WEB2',start:'10:00',end:'13:00',room:'CLAB1',prof:'Rivera, Russel'}
   ],
   Tuesday:[
-    {subject:'7NET1',start:'07:00',end:'09:00',room:'CLAB5',prof:'Superio, Mark Gil Q.'},
+    {subject:'7NET1',start:'07:00',end:'09:00',room:'CLAB2',prof:'Superio, Mark Gil Q.'},
     {subject:'7SADD',start:'09:00',end:'11:00',room:'L310',prof:'Ybañez, Michelle Ann J.'}
   ],
   Wednesday:[
@@ -85,13 +84,14 @@ const scheduleData={
     {subject:'PATHFIT 4',start:'09:00',end:'11:00',room:'GYM',prof:'Fernando, Leanjo'}
   ],
   Thursday:[
+    {subject:'7NET1',start:'07:00',end:'10:00',room:'CLAB2',prof:'Superio, Mark Gil Q.'},
     {subject:'RIZAL',start:'10:00',end:'13:00',room:'L307',prof:'Badaran, Marilyn'},
-    {subject:'7BPO',start:'14:00',end:'17:00',room:'L303',prof:'Tiglao, Tammy'},
-    {subject:'7BAFUN',start:'17:00',end:'20:00',room:'L306',prof:'Sese, Vito Dominic'}
+    {subject:'7BPO',start:'14:00',end:'17:00',room:'L303',prof:'Tiglao, Tammy'}
   ],
   Friday:[
     {subject:'7SADD',start:'07:00',end:'10:00',room:'CLAB1',prof:'Ybañez, Michelle Ann J.'},
-    {subject:'ETHICS',start:'10:00',end:'13:00',room:'L306',prof:'Paguino, Mike Irish'}
+    {subject:'ETHICS',start:'10:00',end:'13:00',room:'L306',prof:'Paguino, Mike Irish'},
+    {subject:'7BAFUN',start:'14:00',end:'17:00',room:'HYBRID LAB',prof:'Ballevar, Vincent'}
   ]
 };
 
@@ -156,7 +156,7 @@ function renderSchedule(){
   renderUpcoming(nextClass);
 }
 
-function renderUpcoming(nextClass){
+function renderUpcoming(){
   const up = document.getElementById('upcoming');
   const now = new Date();
   const dayName = currentDate.toLocaleDateString('en-US',{weekday:'long'});
@@ -173,7 +173,10 @@ function renderUpcoming(nextClass){
 
   let html='';
   if(first) html+=`<div class='card'><i class='fa-solid fa-forward'></i> <b>Upcoming:</b> ${first.subject} in ${format(first.start-now)}</div>`;
-  if(second) html+=`<div class='card'><i class='fa-solid fa-angles-right'></i> <b>Next:</b> ${second.subject} at ${format12(second.start.getHours()+':'+String(second.start.getMinutes()).padStart(2,'0'))}</div>`;
+  if(second){
+    const t = String(second.start.getHours()).padStart(2,'0')+':' + String(second.start.getMinutes()).padStart(2,'0');
+    html+=`<div class='card'><i class='fa-solid fa-angles-right'></i> <b>Next:</b> ${second.subject} at ${format12(t)}</div>`;
+  }
   up.innerHTML = html;
 }
 
@@ -218,7 +221,7 @@ function initSubjects(){
  subs.forEach(x=>{
   s.innerHTML+=`<option>${x}</option>`;
   f.innerHTML+=`<option>${x}</option>`;
-  if(!colors[x]) colors[x]='#'+Math.floor(Math.random()*16777215).toString(16);
+  if(!colors[x]) colors[x]='#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
  });
  saveAll();
 }
