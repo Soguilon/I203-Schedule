@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Schedule Timer</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+/* =========================
+   DEFAULT = I201 RED THEME
+   ========================= */
+:root{
+  --bg:#0a0a0a;
+  --fg:#ffffff;
+  --card:#151515;
+  --accent:#ff2b2b;
+  --muted:#ff9b9b;
+}
+
+/* I202 GREEN THEME */
+body.green{
+  --bg:#0a0f0a;
+  --fg:#ffffff;
+  --card:#151a15;
+  --accent:#19c37d;
+  --muted:#9be7c4;
+}
+
+/* LIGHT MODE */
+body.light{
+  --bg:#ffffff;
+  --fg:#111;
+  --card:#f3f3f3;
+  --muted:#555;
+}
+
+/* ========================= */
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Inter,Arial,Helvetica,sans-serif;
+  background:var(--bg);
+  color:var(--fg);
+}
+
+/* RETURN */
+.back-btn{
+  position:fixed;
+  top:14px;
+  left:14px;
+  z-index:999;
+  border:none;
+  border-radius:12px;
+  padding:10px 12px;
+  cursor:pointer;
+  background:linear-gradient(135deg,var(--accent),#ff6b6b);
+  color:#fff;
+}
+body.green .back-btn{
+  background:linear-gradient(135deg,var(--accent),#38ef7d);
+}
+
+@media(max-width:600px){
+  .back-btn{padding:8px 10px;font-size:14px}
+}
+
+/* ========================= */
+
+.container{max-width:1100px;margin:auto;padding:18px}
+
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.title{font-size:28px;font-weight:700;color:var(--accent)}
+.subtitle{font-size:14px;color:var(--muted)}
+
+.nav{display:flex;gap:8px}
+
+button{
+  border:none;
+  border-radius:10px;
+  padding:10px 14px;
+  cursor:pointer;
+  background:linear-gradient(135deg,var(--accent),#ff6b6b);
+  color:#fff;
+  font-weight:600;
+}
+
+body.green button{
+  background:linear-gradient(135deg,var(--accent),#38ef7d);
+}
+
+button.ghost{
+  background:transparent;
+  border:1px solid rgba(255,255,255,.2);
+  color:var(--fg);
+}
+
+.card{
+  background:linear-gradient(180deg,var(--card),rgba(255,255,255,.03));
+  border-radius:16px;
+  padding:14px;
+  margin-bottom:12px;
+  box-shadow:0 10px 25px rgba(0,0,0,.35);
+}
+
+.subject{
+  font-size:18px;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.details{
+  font-size:14px;
+  color:var(--muted);
+  margin-top:4px;
+}
+
+.week-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:12px;
+}
+
+.color-dot{
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  display:inline-block;
+}
+</style>
+</head>
+
+<body>
+
+<button class="back-btn" onclick="history.back()">
+  <i class="fa-solid fa-arrow-left"></i>
+</button>
+
+<div class="container">
+
+  <div class="header">
+    <div>
+      <div class="title" id="titleText">
+        <i class="fa-solid fa-calendar-check"></i> I201 Schedule 
+      </div>
+      <div class="subtitle" id="today"></div>
+    </div>
+
+    <div class="nav">
+      <button class="ghost" onclick="switchSection()">
+        <i class="fa-solid fa-rotate"></i> Switch
+      </button>
+
+      <button class="ghost" onclick="prevDay()"><i class="fa-solid fa-chevron-left"></i></button>
+      <button class="ghost" onclick="toggleView()"><i class="fa-solid fa-table"></i></button>
+      <button class="ghost" onclick="toggleMode()"><i class="fa-solid fa-moon"></i></button>
+      <button class="ghost" onclick="nextDay()"><i class="fa-solid fa-chevron-right"></i></button>
+    </div>
+  </div>
+
+  <div id="schedule"></div>
+</div>
+
+<script>
+
+/* =========================
+   SUBJECT COLORS
+   ========================= */
+
+const colors201={
+ RIZAL:'#ff4d4d',
+ ETHICS:'#ff884d',
+ SADD:'#ffd24d',
+ '7NET1':'#4dff88',
+ PATHFIT4:'#4dd2ff',
+ '7BP0':'#7a5cff',
+ '7WEB2':'#ff4da6',
+ CCARES:'#00e6b8',
+ '7SADD':'#ffcc00',
+ '7BAFUN':'#ff2b2b'
+};
+
+const colors202={
+ '7NET1':'#00e676',
+ '7BPO':'#4caf50',
+ '7WEB2':'#1de9b6',
+ ETHICS:'#26a69a',
+ CCARES:'#00bfa5',
+ '7SADD':'#69f0ae',
+ RIZAL:'#2ecc71',
+ PATHFIT4:'#00c853',
+ '7BAFUN':'#00a152'
+};
+
+/* =========================
+   SCHEDULES
+   ========================= */
+
+const sched201 = { /* same as your I201 */
+Monday:[
+ {subject:'RIZAL',start:'10:00',end:'13:00',room:'L306',prof:'Badararn, Marilyn Cruz'},
+ {subject:'ETHICS',start:'14:00',end:'17:00',room:'L306',prof:'Paguinto, Mike Irish'}
+],
+Tuesday:[
+ {subject:'SADD',start:'07:00',end:'09:00',room:'L309',prof:'Ybañez, Michelle Ann'},
+ {subject:'7NET1',start:'10:00',end:'13:00',room:'CLAB2',prof:'Avellana, Ernesto Jr.'},
+ {subject:'PATHFIT4',start:'14:00',end:'16:00',room:'GYM',prof:'Fernando, Leanjo'}
+],
+Wednesday:[
+ {subject:'7BP0',start:'07:00',end:'10:00',room:'L307',prof:'Tiglao, Tammy'},
+ {subject:'7WEB2',start:'11:00',end:'13:00',room:'L302',prof:'Rivera, Russel'}
+],
+Thursday:[
+ {subject:'7WEB2',start:'07:00',end:'10:00',room:'CLAB1',prof:'Rivera, Russel'},
+ {subject:'CCARES',start:'10:00',end:'11:00',room:'L307',prof:'Cayanan, Sophia Isabel'}
+],
+Friday:[
+ {subject:'7SADD',start:'10:00',end:'13:00',room:'CLAB7',prof:'Ybañez, Michelle Ann'},
+ {subject:'7NET1',start:'14:00',end:'16:00',room:'L306',prof:'Avellana, Ernesto Jr.'},
+ {subject:'7BAFUN',start:'17:00',end:'20:00',room:'L306',prof:'Sese, Vito Dominic'}
+]};
+
+const sched202 = { /* same as your I202 */
+Monday:[
+ {subject:'7NET1',start:'07:00',end:'09:00',room:'CLAB2',prof:'Avellana, Ernesto Jr.'},
+ {subject:'7BPO',start:'10:00',end:'13:00',room:'L302',prof:'Tiglao, Tammy'}
+],
+Tuesday:[
+ {subject:'7WEB2',start:'07:00',end:'09:00',room:'L310',prof:'Rivera, Russel'},
+ {subject:'7WEB2',start:'10:00',end:'13:00',room:'CLAB1',prof:'Rivera, Russel'},
+ {subject:'ETHICS',start:'14:00',end:'17:00',room:'L306',prof:'Paguinto, Mike Irish'}
+],
+Wednesday:[
+ {subject:'CCARES',start:'10:00',end:'11:00',room:'L302',prof:'Cayanan, Sophia Isabel'},
+ {subject:'7SADD',start:'11:00',end:'13:00',room:'Hybrid Lab',prof:'Ybañez, Michelle Ann J.'},
+ {subject:'RIZAL',start:'14:00',end:'17:00',room:'L306',prof:'Badaran, Marilyn'}
+],
+Thursday:[
+ {subject:'PATHFIT4',start:'07:00',end:'09:00',room:'Gym',prof:'Fernando, Leanjo'},
+ {subject:'7SADD',start:'10:00',end:'13:00',room:'CLAB4',prof:'Ybañez, Michelle Ann J.'}
+],
+Friday:[
+ {subject:'7NET1',start:'07:00',end:'10:00',room:'CLAB6',prof:'Avellana, Ernesto Jr.'},
+ {subject:'7BAFUN',start:'10:00',end:'13:00',room:'Hybrid Lab',prof:'Ballevar, Vincent'}
+]};
+
+/* ========================= */
+
+let currentDate=new Date();
+let weekly=false;
+let is201=true;
+
+function switchSection(){
+  is201=!is201;
+  document.body.classList.toggle('green',!is201);
+  document.getElementById('titleText').innerHTML =
+    `<i class="fa-solid fa-calendar-check"></i> ${is201?'I201':'I202'} Schedule Timer`;
+  renderSchedule();
+}
+
+function format12(t){
+ let[h,m]=t.split(':');h=Number(h);
+ const ampm=h>=12?'PM':'AM';h=h%12||12;
+ return h+':'+m+' '+ampm;
+}
+
+function renderSchedule(){
+ const scheduleData=is201?sched201:sched202;
+ const subjectColors=is201?colors201:colors202;
+
+ const dayName=currentDate.toLocaleDateString('en-US',{weekday:'long'});
+ document.getElementById('today').textContent=currentDate.toDateString();
+
+ const el=document.getElementById('schedule');
+ el.innerHTML='';
+
+ if(weekly){
+   const grid=document.createElement('div');
+   grid.className='week-grid';
+
+   Object.keys(scheduleData).forEach(day=>{
+     const col=document.createElement('div');
+     col.className='card';
+     col.innerHTML=`<div class="subject"><i class="fa-solid fa-calendar-day"></i> ${day}</div>`;
+
+     scheduleData[day].forEach(c=>{
+       col.innerHTML+=`<div class="details">
+         <span class="color-dot" style="background:${subjectColors[c.subject]}"></span>
+         ${c.subject} • ${format12(c.start)} - ${format12(c.end)}
+       </div>`;
+     });
+
+     grid.appendChild(col);
+   });
+
+   el.appendChild(grid);
+   return;
+ }
+
+ (scheduleData[dayName]||[]).forEach(c=>{
+   const card=document.createElement('div');
+   card.className='card';
+
+   card.innerHTML=`
+   <div class="subject">
+     <span class="color-dot" style="background:${subjectColors[c.subject]}"></span>
+     <i class="fa-solid fa-book"></i> ${c.subject}
+   </div>
+   <div class="details"><i class="fa-regular fa-clock"></i> ${format12(c.start)} - ${format12(c.end)}</div>
+   <div class="details"><i class="fa-solid fa-location-dot"></i> ${c.room}</div>
+   <div class="details"><i class="fa-solid fa-user"></i> ${c.prof}</div>
+   `;
+   el.appendChild(card);
+ });
+}
+
+function toggleMode(){document.body.classList.toggle('light')}
+function toggleView(){weekly=!weekly;renderSchedule()}
+function prevDay(){currentDate.setDate(currentDate.getDate()-1);renderSchedule()}
+function nextDay(){currentDate.setDate(currentDate.getDate()+1);renderSchedule()}
+
+renderSchedule();
+</script>
+
+</body>
+</html>
